@@ -1,0 +1,186 @@
+import tkinter as tk
+from tkinter import ttk, scrolledtext
+import speech_recognition as sr
+import re
+import threading
+import queue
+
+class VoiceCalculator:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Calculatrice Vocale")
+        self.root.geometry("500x400")
+        
+        self.is_listening = False
+        self.recognizer = sr.Recognizer()
+        self.message_queue = queue.Queue()
+        
+        self.create_widgets()
+        self.update_gui()
+    
+    def create_widgets(self):
+        self.listen_button = ttk.Button(
+            self.root,
+            text="Démarrer l'écoute",
+            command=self.toggle_listening
+        )
+        self.listen_button.pack(pady=10)
+        
+        self.status_label = ttk.Label(
+            self.root,
+            text="En attente...",
+            font=("Arial", 10)
+        )
+        self.status_label.pack(pady=5)
+        
+        self.text_area = scrolledtext.ScrolledText(
+            self.root,
+            width=50,
+            height=15,
+            font=("Arial", 10)
+        )
+        self.text_area.pack(padx=10, pady=10)
+    
+    def toggle_listening(self):
+        if not self.is_listening:
+            self.is_listening = True
+            self.listen_button.config(text="Arrêter l'écoute")
+            self.status_label.config(text="En écoute...")
+            threading.Thread(target=self.listen_loop, daemon=True).start()
+        else:
+            self.is_listening = False
+            self.listen_button.config(text="Démarrer l'écoute")
+            self.status_label.config(text="En attente...")
+    
+    def convert_word_to_number(self, word):
+        """Convertit les mots français en nombres"""
+        number_dict = {
+            'zéro': 0, 'un': 1, 'deux': 2, 'trois': 3, 'quatre': 4,
+            'cinq': 5, 'six': 6, 'sept': 7, 'huit': 8, 'neuf': 9,
+            'dix': 10, 'onze': 11, 'douze': 12, 'treize': 13, 'quatorze': 14,
+            'quinze': 15, 'seize': 16, 'vingt': 20, 'trente': 30,
+            'quarante': 40, 'cinquante': 50, 'soixante': 60,
+            'soixante-dix': 70, 'quatre-vingt': 80, 'quatre-vingt-dix': 90,
+            'cent': 100
+        }
+        return number_dict.get(word.lower(), word)
+
+    def parse_text_to_calculation(self, text):
+        """Parse le texte pour extraire l'opération mathématique"""
+        # Convertir le texte en minuscules et le nettoyer
+        text = text.lower().strip()
+        
+        # Dictionnaire des opérateurs
+        operators = {
+            'plus': '+',
+            'moins': '-',
+            'fois': '*',
+            'divisé par': '/',
+            'divisé': '/',
+            'multiplié par': '*',
+            'multiplié': '*'
+        }
+        
+        # Remplacer les mots d'opérateurs par leurs symboles
+        for word, symbol in operators.items():
+            text = text.replace(word, symbol)
+        
+        # Diviser le texte en mots
+        words = text.split()
+        
+        # Convertir les nombres écrits en chiffres
+        numbers = []
+        operator = None
+        
+        for word in words:
+            # Si c'est un opérateur
+            if word in ['+', '-', '*', '/']:
+                operator = word
+                continue
+                
+            # Essayer de convertir en nombre
+            try:
+                # D'abord essayer de convertir directement
+                num = float(word)
+                numbers.append(num)
+            except ValueError:
+                # Sinon essayer de convertir depuis le mot
+                try:
+                    num = self.convert_word_to_number(word)
+                    if isinstance(num, (int, float)):
+                        numbers.append(num)
+                except:
+                    continue
+        
+        # Si nous avons deux nombres et un opérateur, retourner l'opération
+        if len(numbers) >= 2 and operator:
+            return (numbers[0], operator, numbers[1])
+        
+        return None
+
+    def calculate(self, operation):
+        """Effectue le calcul"""
+        if not operation:
+            return None
+        
+        num1, op, num2 = operation
+        try:
+            if op == '+':
+                return num1 + num2
+            elif op == '-':
+                return num1 - num2
+            elif op == '*':
+                return num1 * num2
+            elif op == '/':
+                return num1 / num2 if num2 != 0 else "Division par zéro impossible"
+        except Exception as e:
+            return f"Erreur de calcul: {str(e)}"
+
+    def listen_loop(self):
+        while self.is_listening:
+            try:
+                with sr.Microphone() as source:
+                    self.recognizer.adjust_for_ambient_noise(source)
+                    self.message_queue.put(("status", "Je vous écoute...\n"))
+                    audio = self.recognizer.listen(source, timeout=5)
+                    text = self.recognizer.recognize_google(audio, language='fr-FR')
+                    self.message_queue.put(("text", f"Texte reconnu: {text}\n"))
+                    
+                    # Traitement du calcul
+                    operation = self.parse_text_to_calculation(text)
+                    if operation:
+                        result = self.calculate(operation)
+                        if result is not None:
+                            result_text = f"Calcul: {operation[0]} {operation[1]} {operation[2]} = {result}\n"
+                            self.message_queue.put(("result", result_text))
+                    else:
+                        self.message_queue.put(("error", "Aucun calcul détecté dans le texte\n"))
+                    
+            except sr.WaitTimeoutError:
+                continue
+            except sr.UnknownValueError:
+                self.message_queue.put(("error", "Désolé, je n'ai pas compris\n"))
+            except sr.RequestError:
+                self.message_queue.put(("error", "Erreur de service de reconnaissance vocale\n"))
+    
+    def update_gui(self):
+        while not self.message_queue.empty():
+            msg_type, message = self.message_queue.get()
+            self.text_area.insert(tk.END, message)
+            if msg_type == "error":
+                self.text_area.tag_add("error", "end-2c linestart", "end-1c")
+                self.text_area.tag_config("error", foreground="red")
+            elif msg_type == "result":
+                self.text_area.tag_add("result", "end-2c linestart", "end-1c")
+                self.text_area.tag_config("result", foreground="green")
+            self.text_area.see(tk.END)
+        
+        self.root.after(100, self.update_gui)
+
+def main():
+    root = tk.Tk()
+    app = VoiceCalculator(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
