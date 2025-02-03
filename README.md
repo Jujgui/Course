@@ -1,8 +1,13 @@
 ## A simple Python port - You need: pip install pygame. Note the code here is not efficient but it's made to be educational and easy from https://www.youtube.com/watch?v=0Kx4Y9TVMGg
-## let's see of it's work and how can we improve it
+# let's see of it's work and how can we improve it
 
-import pygame
-import random
+We import some librairies for easier our tasks.
+
+- import pygame
+
+- import random
+
+
 
 atoms=[]
 window_size = 300
