@@ -3,9 +3,8 @@
 
 We import some librairies for easier our tasks.
 
-- import pygame
-
-- import random
+ import pygame
+ import random
 
 
 
