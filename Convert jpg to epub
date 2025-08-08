@@ -1,0 +1,106 @@
+## Les bibliotheques ##
+import os
+import zipfile
+import io
+from PIL import Image
+import tempfile
+import shutil
+
+## Definition des fonctions ##
+def extract_images_from_zip(zip_path, extract_to):
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        for file in zip_ref.namelist():
+            if file.lower().endswith(('.jpg', '.jpeg')):
+                zip_ref.extract(file, extract_to)
+
+def process_folder(folder_path):
+    image_files = []
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            if file.lower().endswith(('.jpg', '.jpeg')):
+                image_files.append(os.path.join(root, file))
+            elif file.lower().endswith('.zip'):
+                zip_path = os.path.join(root, file)
+                temp_dir = tempfile.mkdtemp()
+                extract_images_from_zip(zip_path, temp_dir)
+                image_files.extend(process_folder(temp_dir))
+                shutil.rmtree(temp_dir)
+    return image_files
+
+def jpg_to_epub(input_folder, output_file):
+    image_files = process_folder(input_folder)
+    
+    with zipfile.ZipFile(output_file, 'w') as epub:
+        epub.writestr('mimetype', 'application/epub+zip', compress_type=zipfile.ZIP_STORED)
+        
+        epub.writestr('META-INF/container.xml', '''<?xml version="1.0"?>
+        <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+          <rootfiles>
+            <rootfile full-path="content.opf" media-type="application/oebps-package+xml"/>
+          </rootfiles>
+        </container>''')
+        
+        opf_content = '''<?xml version="1.0" encoding="UTF-8"?>
+        <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookID" version="2.0">
+          <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+            <dc:title>Images Converties</dc:title>
+            <dc:language>fr</dc:language>
+            <dc:identifier id="BookID">urn:uuid:12345678-1234-1234-1234-123456789012</dc:identifier>
+          </metadata>
+          <manifest>
+            <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+            <item id="content" href="content.html" media-type="application/xhtml+xml"/>
+        '''
+        
+        html_content = '''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+        <html xmlns="http://www.w3.org/1999/xhtml">
+        <head><title>Images Converties</title></head>
+        <body>
+        '''
+        
+        for index, image_path in enumerate(image_files, start=1):
+            with Image.open(image_path) as img:
+                img.thumbnail((600, 800))
+                img_buffer = io.BytesIO()
+                img.save(img_buffer, format="JPEG", quality=95)
+                epub.writestr(f'image{index}.jpg', img_buffer.getvalue())
+            
+            opf_content += f'    <item id="image{index}" href="image{index}.jpg" media-type="image/jpeg"/>\n'
+            html_content += f'    <div><img src="image{index}.jpg" alt="Image {index}" /></div>\n'
+        
+        opf_content += '''  </manifest>
+          <spine toc="ncx">
+            <itemref idref="content"/>
+          </spine>
+        </package>'''
+        
+        html_content += '</body></html>'
+        
+        epub.writestr('content.opf', opf_content)
+        epub.writestr('content.html', html_content)
+        
+        epub.writestr('toc.ncx', '''<?xml version="1.0" encoding="UTF-8"?>
+        <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+          <head>
+            <meta name="dtb:uid" content="urn:uuid:12345678-1234-1234-1234-123456789012"/>
+            <meta name="dtb:depth" content="1"/>
+            <meta name="dtb:totalPageCount" content="0"/>
+            <meta name="dtb:maxPageNumber" content="0"/>
+          </head>
+          <docTitle><text>Images Converties</text></docTitle>
+          <navMap>
+            <navPoint id="navpoint-1" playOrder="1">
+              <navLabel><text>Début</text></navLabel>
+              <content src="content.html"/>
+            </navPoint>
+          </navMap>
+        </ncx>''')
+    
+    print(f"Le fichier EPUB a été créé avec succès : {output_file}")
+
+## Conversion des images ##
+Tome = [ i+1 for i in range(0,27)] # nombre de tome a convertir
+for i in Tome:
+    input_folder = r"lien".format(i)
+    output_file = r"lien".format(i)
+    jpg_to_epub(input_folder, output_file)
