@@ -1,0 +1,308 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import plotly.express as px
+import osmnx as ox
+import seaborn as sns
+import pandoc
+
+# Lire le fichier Excel
+emplacement_dechetteries = pd.read_excel('contact dechetterie.xlsx')
+emplacement_dechetteries = emplacement_dechetteries[(emplacement_dechetteries['latitude'] >= 47.4) &
+                                  (emplacement_dechetteries['longitude'] >= -4.8)]
+
+mp_dechetteries = pd.read_excel('SINOE14_TonnageDecheterieParTypeDechet.xlsx')
+
+# les coordonnees du fichier ont etes obtenus via ce site https://www.coordonnees-gps.fr/
+locaux = pd.read_excel('vente de locaux.xlsx') 
+locaux['longitude'] = locaux['longitude'].astype(float)
+locaux['latitude'] = locaux['latitude'].astype(float)
+
+# les coordonnees du fichier ont etes obtenus via ce site https://www.coordonnees-gps.fr/
+EBB = pd.read_excel('entreprise bois bretagne.xlsx') 
+
+mp_finistere = mp_dechetteries[(mp_dechetteries['C_DEPT'] == 29)] 
+mp_morbihan = mp_dechetteries[(mp_dechetteries['C_DEPT'] == 56)]
+mp_cotedarmor = mp_dechetteries[(mp_dechetteries['C_DEPT'] == 22)]
+mp_illeetvilaine = mp_dechetteries[(mp_dechetteries['C_DEPT'] == 35)]
+
+
+plt.title('Evolution du tonnage de dechets verts dans les differentes regions en Bretagne')
+
+plt.plot(mp_finistere['ANNEE'][(mp_finistere['L_TYP_REG_DECHET'] == 'Déchets verts')],
+        mp_finistere['TONNAGE_T'][(mp_finistere['L_TYP_REG_DECHET'] == 'Déchets verts')],
+        label = 'finistere')
+plt.plot(mp_morbihan['ANNEE'][(mp_morbihan['L_TYP_REG_DECHET'] == 'Déchets verts')],
+        mp_morbihan['TONNAGE_T'][(mp_morbihan['L_TYP_REG_DECHET'] == 'Déchets verts')],
+        label = 'morbihan')
+plt.plot(mp_cotedarmor['ANNEE'][(mp_cotedarmor['L_TYP_REG_DECHET'] == 'Déchets verts')],
+        mp_cotedarmor['TONNAGE_T'][(mp_cotedarmor['L_TYP_REG_DECHET'] == 'Déchets verts')],
+        label = 'cote d armor')
+plt.plot(mp_illeetvilaine['ANNEE'][(mp_illeetvilaine['L_TYP_REG_DECHET'] == 'Déchets verts')],
+        mp_illeetvilaine['TONNAGE_T'][(mp_illeetvilaine['L_TYP_REG_DECHET'] == 'Déchets verts')],
+        label = 'ille et vilaine')
+
+plt.xlabel('annee')
+plt.ylabel('Dechets vers en tonnes')
+plt.ylim(bottom=0)
+plt.legend()
+plt.show()
+
+plt.title('Evolution du tonnage d encombrants dans les differentes regions en Bretagne')
+
+plt.plot(mp_finistere['ANNEE'][(mp_finistere['L_TYP_REG_DECHET'] == 'Encombrants')],
+        mp_finistere['TONNAGE_T'][(mp_finistere['L_TYP_REG_DECHET'] == 'Encombrants')],
+        label = 'finistere')
+plt.plot(mp_morbihan['ANNEE'][(mp_morbihan['L_TYP_REG_DECHET'] == 'Encombrants')],
+        mp_morbihan['TONNAGE_T'][(mp_morbihan['L_TYP_REG_DECHET'] == 'Encombrants')],
+        label = 'morbihan')
+plt.plot(mp_cotedarmor['ANNEE'][(mp_cotedarmor['L_TYP_REG_DECHET'] == 'Encombrants')],
+        mp_cotedarmor['TONNAGE_T'][(mp_cotedarmor['L_TYP_REG_DECHET'] == 'Encombrants')],
+        label = 'cote d armor')
+plt.plot(mp_illeetvilaine['ANNEE'][(mp_illeetvilaine['L_TYP_REG_DECHET'] == 'Encombrants')],
+        mp_illeetvilaine['TONNAGE_T'][(mp_illeetvilaine['L_TYP_REG_DECHET'] == 'Encombrants')],
+        label = 'ille et vilaine')
+
+plt.xlabel('annee')
+plt.ylabel('Dechets encombrants en tonnes')
+plt.ylim(bottom=0)
+plt.legend()
+plt.show()
+
+plt.title('Evolution du tonnage d encombrants dans les differentes regions en Bretagne')
+
+plt.plot(mp_finistere['ANNEE'][(mp_finistere['L_TYP_REG_DECHET'] == 'Encombrants')],
+        mp_finistere['TONNAGE_T'][(mp_finistere['L_TYP_REG_DECHET'] == 'Encombrants')],
+        label = 'finistere')
+plt.plot(mp_morbihan['ANNEE'][(mp_morbihan['L_TYP_REG_DECHET'] == 'Encombrants')],
+        mp_morbihan['TONNAGE_T'][(mp_morbihan['L_TYP_REG_DECHET'] == 'Encombrants')],
+        label = 'morbihan')
+plt.plot(mp_cotedarmor['ANNEE'][(mp_cotedarmor['L_TYP_REG_DECHET'] == 'Encombrants')],
+        mp_cotedarmor['TONNAGE_T'][(mp_cotedarmor['L_TYP_REG_DECHET'] == 'Encombrants')],
+        label = 'cote d armor')
+plt.plot(mp_illeetvilaine['ANNEE'][(mp_illeetvilaine['L_TYP_REG_DECHET'] == 'Encombrants')],
+        mp_illeetvilaine['TONNAGE_T'][(mp_illeetvilaine['L_TYP_REG_DECHET'] == 'Encombrants')],
+        label = 'ille et vilaine')
+
+plt.xlabel('annee')
+plt.ylabel('Dechets encombrants en tonnes')
+plt.ylim(bottom=0)
+plt.legend()
+plt.show()
+
+# Le site web https://bretagne-environnement.fr/donnees-gisement-dechets-bretagne permet d'obtenir des informations interessantes vis a vis de l'utiisation des dechets en Bretagne. Les dechets aussi bien issu de menage que d'entreprise. Ci dessous, les documents importes. A savoir que ceux sont les donnees qui recapitulent ceux qui a ete recupere depuis 11 ans.
+# Le graphique ci dessus permet d'observer que le finistere est le departement qui produit le plus de dechets verts. Cette information est a prendre avec des precautions car nous ne savons pas quelle est la partie des dechets recuperable. Mais neanmoins, nous pouvons ponderer ceci dans le choix de la localisation du site de production de biochar.
+
+dechets_artisants = pd.read_excel('oeb_dechets_artisanat_bretagne.xlsx')
+dechets_gisement_dma_bretagne = pd.read_excel('oeb_dechets_gisement_dma_bretagne.xlsx')
+dechets_gisement_DNDAE_bretagne = pd.read_excel('oeb_dechets_gisement_DNDAE_bretagne.xlsx')
+oeb_dechets_traitement_dma_bretagne = pd.read_excel('oeb_dechets_traitement_dma_bretagne.xlsx')
+
+plt.figure(figsize=(100, 10))
+dechets_artisants['Dechet'].hist()
+plt.xticks(rotation='vertical')
+plt.show()
+
+# On observe la recurrence des termes dans chaque fichier pour ensuite quantifier les ressources. Dans un premier temps, on observe le document "dechets_artisants".
+# On selectionne certain type de dechets qui semblent le plus apte a pyrolyser pour notre projet. A savoir : ceux comportant le terme bois, papier, palette, moquette, carton, chiffons, dechets organiques et verts. 
+
+dechets_artisants_pyrolyse = dechets_artisants[(dechets_artisants['Dechet'].str.contains('papier', case=False, na=False)|
+                                               dechets_artisants['Dechet'].str.contains('bois', case=False, na=False)|
+                                               dechets_artisants['Dechet'].str.contains('palette', case=False, na=False)|
+                                               dechets_artisants['Dechet'].str.contains('vert', case=False, na=False)
+                                             )]
+
+#dechets_artisants['Dechet'].str.contains('organique', case=False, na=False)
+#dechets_artisants['Dechet'].str.contains('moquette', case=False, na=False)
+#dechets_artisants['Dechet'].str.contains('chiffon', case=False, na=False)
+
+dechets_artisants_pyrolyse = dechets_artisants_pyrolyse[~(dechets_artisants_pyrolyse['Dechet'].str.contains('verre', case=False, na=False)|
+                                                          dechets_artisants_pyrolyse['Dechet'].str.contains('photo', case=False, na=False)|
+                                                          dechets_artisants_pyrolyse['Dechet'].str.contains('aluminium', case=False, na=False)|
+                                                          dechets_artisants_pyrolyse['Dechet'].str.contains('cendre', case=False, na=False))]
+
+dechets_artisants_pyrolyse['Resultat'] = dechets_artisants_pyrolyse['Resultat'].str.replace(r'[^0-9.]', '', regex=True)
+dechets_artisants_pyrolyse['Resultat'] = dechets_artisants_pyrolyse['Resultat'].str.replace(',', '.', regex=True).astype(float)
+
+sns.set(style="whitegrid")
+plt.figure(figsize=(20, 10))
+ax = sns.barplot(x='Activite', y='Resultat', hue='Dechet', 
+                 data=dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Resultat'].notna()],
+                 errorbar=None,width=0.3)
+plt.title("Repartition des dechets selon le secteur d'activite",fontsize=20)
+plt.xlabel("Type de dechet",fontsize=20)
+plt.ylabel("Tonnage",fontsize=20)
+plt.legend(title='Dechet',fontsize=20)
+plt.xticks(rotation='vertical',fontsize=20)
+plt.tight_layout()
+plt.show()
+
+tableau_croise = pd.pivot_table(dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Resultat'].notna()],
+                                values='Resultat', index='Activite', columns='Dechet', aggfunc='sum')
+tableau_croise = tableau_croise.dropna(axis=0, how='all').dropna(axis=1, how='all')
+pd.set_option('display.float_format', '{:.2f}'.format)
+print(tableau_croise)
+
+# Graphique de dechet bois
+plt.figure(figsize=(20, 6))
+plt.title("Dechet de bois")
+ax = sns.barplot(x='Dechet', y='Resultat', hue='Activite', 
+                data=dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Dechet'].str.contains('bois', case=False, na=False) & (dechets_artisants_pyrolyse['Resultat'].notna())]
+                ,errorbar=None)
+plt.xticks(rotation='vertical')
+plt.ylabel("Tonnes")
+plt.show()
+
+# Graphique de dechet carton
+plt.figure(figsize=(20, 6))
+plt.title("Dechet de carton")
+ax = sns.barplot(x='Dechet', y='Resultat', hue='Activite', 
+                data=dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Dechet'].str.contains('carton', case=False, na=False) & (dechets_artisants_pyrolyse['Resultat'].notna())]
+                ,errorbar=None)
+plt.xticks(rotation='vertical')
+plt.show()
+
+# Graphique de dechet papier
+plt.figure(figsize=(20, 6))
+plt.title("Dechet de papier")
+ax = sns.barplot(x='Dechet', y='Resultat', hue='Activite', 
+                data=dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Dechet'].str.contains('papier', case=False, na=False) & (dechets_artisants_pyrolyse['Resultat'].notna())]
+                ,errorbar=None)
+plt.xticks(rotation='vertical')
+plt.show()
+
+# Graphique de dechet chiffon
+plt.figure(figsize=(20, 6))
+plt.title("Dechet de chiffon")
+ax = sns.barplot(x='Dechet', y='Resultat', hue='Activite', 
+                data=dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Dechet'].str.contains('chiffon', case=False, na=False) &
+                                                (dechets_artisants_pyrolyse['Resultat'].notna())])
+plt.xticks(rotation='vertical')
+plt.show()
+
+# Graphique valorisation dechets
+
+dico = {'IDSI' : 'Installation de Stockage de Dechets Inertes',
+        'ISDND' : 'Installation de Stockage de Dechets Non Dangereux',
+        'ISDD' : 'Installation de Stockage de Dechets Dangereux'}
+
+data = oeb_dechets_traitement_dma_bretagne[oeb_dechets_traitement_dma_bretagne['Déchet'].str.contains('vert', case=False, na=False)|
+                                                          oeb_dechets_traitement_dma_bretagne['Déchet'].str.contains('palette', case=False, na=False)|
+                                                          oeb_dechets_traitement_dma_bretagne['Déchet'].str.contains('biodechet', case=False, na=False)|
+                                                          oeb_dechets_traitement_dma_bretagne['Déchet'].str.contains('bois', case=False, na=False)|
+                                                          oeb_dechets_traitement_dma_bretagne['Déchet'].str.contains('encombrant', case=False, na=False)]
+
+#oeb_dechets_traitement_dma_bretagne['Déchet'].str.contains('alimentaire', case=False, na=False)|
+#oeb_dechets_traitement_dma_bretagne['Déchet'].str.contains('textile', case=False, na=False)|
+#oeb_dechets_traitement_dma_bretagne['Déchet'].str.contains('journeau', case=False, na=False)|
+#oeb_dechets_traitement_dma_bretagne['Déchet'].str.contains('organique', case=False, na=False)|
+#oeb_dechets_traitement_dma_bretagne['Déchet'].str.contains('papier', case=False, na=False)|
+#oeb_dechets_traitement_dma_bretagne['Déchet'].str.contains('carton', case=False, na=False)|
+
+
+
+plt.figure(figsize=(20, 10))
+couleur = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
+plt.title("Valorisation selon les dechets",fontsize=20)
+ax = sns.barplot(x='Déchet', y='Resultat', hue='Filière de traitement', 
+                 data=data.sort_values(by = 'Resultat'),
+                 palette=couleur,
+                 errorbar=None)
+
+#taille_colonne = 0.3
+#for patch in ax.patches:
+#    current_width = patch.get_width()
+#    diff = current_width - taille_colonne
+#    patch.set_width(taille_colonne)
+#    patch.set_x(patch.get_x() + diff * 0.5)
+
+plt.legend(fontsize=20)
+
+plt.xticks(rotation='vertical',fontsize=20)
+plt.ylabel('Tonnes',fontsize=20)
+plt.show()
+
+Quantite_Carton, Quantite_Bois, Quantite_Papier = 0,0,0
+Quantite_palette, Quantite_dechet_orga, Quantite_dechet_vert = 0, 0, 0
+
+for i,row in dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Dechet'].str.contains('carton', case=False, na=False)].iterrows():
+    if pd.notna(row['Resultat']):
+        Quantite_Carton+= float(row['Resultat'])
+for i,row in dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Dechet'].str.contains('bois', case=False, na=False)].iterrows():
+    if pd.notna(row['Resultat']):
+        Quantite_Bois+= float(row['Resultat'])
+for i,row in dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Dechet'].str.contains('papier', case=False, na=False)].iterrows():
+    if pd.notna(row['Resultat']):    
+        Quantite_Papier+= float(row['Resultat'])
+for i,row in dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Dechet'].str.contains('DÃ©chets organiques', case=False, na=False)].iterrows():
+    if pd.notna(row['Resultat']):    
+        Quantite_dechet_orga+= float(row['Resultat'])        
+for i,row in dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Dechet'].str.contains('DÃ©chets verts', case=False, na=False)].iterrows():
+    if pd.notna(row['Resultat']):    
+        Quantite_dechet_vert+= float(row['Resultat']) 
+for i,row in dechets_artisants_pyrolyse[dechets_artisants_pyrolyse['Dechet'].str.contains('palette', case=False, na=False)].iterrows():
+    if pd.notna(row['Resultat']):    
+        Quantite_palette+= float(row['Resultat']) 
+
+
+print('La quantite de Carton produit en tant que dechet correspond a', Quantite_Carton,
+      'Tonnes.\nLa quantite de Papier produit en tant que dechet correspond a', Quantite_Papier,
+      'Tonnes.\nLa quantite de Bois produit en tant que dechet correspond a', Quantite_Bois, 'Tonnes.',
+      'Tonnes.\nLa quantite de dechet organique produit en tant que dechet correspond a', Quantite_dechet_orga, 'Tonnes.',
+      'Tonnes.\nLa quantite de dechet vert en tant que dechet correspond a', Quantite_dechet_vert, 'Tonnes.',
+      'Tonnes.\nLa quantite de palette en tant que dechet correspond a', Quantite_palette, 'Tonnes.',
+     )
+
+latitude1 = emplacement_dechetteries['latitude'].astype(float)
+longitude1 = emplacement_dechetteries['longitude'].astype(float)
+nom = emplacement_dechetteries['libelle_entite_geographique']
+type_service = emplacement_dechetteries['type_service']
+
+latitude2 = locaux['latitude'].astype(float)
+longitude2 = locaux['longitude'].astype(float)
+prix = locaux['prix']
+superficie_entrepot = locaux['superficie entrepot'].astype(float)
+superficie_terrain = locaux['taille du terrain'].astype(float)
+
+latitude3 = EBB['latitude'].astype(float)
+longitude3 = EBB['longitude'].astype(float)
+
+# taille de la carte
+plt.figure(figsize=(10, 6))
+
+# Tracé des points sur la carte
+plt.scatter(longitude1, latitude1, c='blue', s=10, marker='o')
+plt.scatter(longitude2, latitude2 , c='orange', s=20, marker='x')
+plt.scatter(longitude3, latitude3 , c='red', s=10, marker='o')
+
+plt.scatter(-4.2525, 48.4525 , c='black', s=30, marker='x')
+
+
+# Configuration des axes
+plt.title('Carte statique des dechetteries, des scieries et des locaux en region Bretagne')
+
+plt.legend(['dechetteries','locaux','scieries'])
+
+# Affichage de la carte
+plt.grid()
+plt.show()
+
+# Création de la carte interactive
+fig = px.scatter_geo(
+    data_frame=emplacement_dechetteries,  # le tableau de donnees
+    lat='latitude',         # Colonne contenant les latitudes
+    lon='longitude',        # Colonne contenant les longitudes
+    hover_name='libelle_entite_geographique',       # Colonne à afficher au survol du curseur
+    size_max=10,            # Taille maximale des points
+    title='Carte Interactive du monde avec les emplacements des dechetteries en Bretagne'
+)
+
+fig.update_geos(
+    center=dict(lat=48.202047, lon=-2.932644),
+    projection_scale=100
+)
+
+# Affichage de la carte interactive
+fig.show()
+plt.show()
+
+
