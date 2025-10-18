@@ -1,0 +1,57 @@
+import numpy as np 
+import random as rd 
+import ssl
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import pandas as pd
+import os
+
+## Définition des variables
+Mission = [] # rédiger en format str
+Joueur = [] # liste des adresses des destinataires
+Cible = [] # noms des participants
+
+## Définition des fonctions
+def assignation_mission(Prénom):
+    cible = Cible[rd.randint(0,len(Cible)-1)]
+    ordre = Mission[rd.randint(0,len(Mission)-1)]
+    Mission.remove(ordre)
+    Cible.remove(cible)
+    if Prénom == cible:
+        return assignation_mission(Prénom)
+    return ordre + cible
+
+def envoie_mail(Prénom,email,contenu):
+    # Prénom : celui a qui on envoie le mail
+    # email : celui de la personne a qui on l'envoie
+    # contenu : type de mail 
+    if contenu == 'ordre de mission':
+        body = "Bonjour "+ Prénom + "\n" + "\n" + "Ci-dessous, votre ordre de mission du jour si vous l'acceptez :\n" + "\n" + assignation_mission(Prénom) +"." + "\n" + "\n" + "Puisse le sort vous être favorable.\n"
+        message = MIMEMultipart()
+        message['From'] = 'adresse mail de celui qui envoie'
+        message['To'] = email
+        message['Subject'] = 'Ordre de mission'
+        message.attach(MIMEText(body, 'plain'))
+    elif contenu == 'règle':
+        body = open('chemin d_accès du fichier qui servira de corps de texte','r', encoding='utf-8').read()
+        message = MIMEMultipart()
+        message['From'] = 'adresse mail de celui qui envoie'
+        message['To'] = email
+        message['Subject'] = 'Règle'
+        message.attach(MIMEText(body, 'plain', 'utf-8'))
+    else :
+        return print("Mauvais terme")
+    with smtplib.SMTP('smtp.gmail.com', "un chiffre je ne sais pas lequel") as server:
+        # Démarrer le chiffrement (TLS dans ce cas)
+        server.starttls()
+        # Connectez-vous au serveur SMTP
+        server.login('adresse mail','la connection au serveur')
+        # Envoyer l'e-mail
+        server.sendmail('adresse mail de celui qui envoie', email, message.as_string())
+
+## Envoi du jeu 
+
+for i in range(len(Joueur)):
+    #envoie_mail(Joueur[i][0],Joueur[i][1],'règle')
+    envoie_mail(Joueur[i][0],Joueur[i][1],'ordre de mission')
