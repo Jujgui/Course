@@ -1,0 +1,81 @@
+import folium
+import requests, json
+import urllib.parse
+import pandas as pd
+import requests
+from io import BytesIO
+import ezodf
+from pandas_ods_reader import read_ods
+import wget
+from requests.auth import HTTPBasicAuth
+import csv
+import geopandas as gpd
+from shapely.geometry import box
+
+## Recuperation du tableur
+def loca(adr):
+    # fonction qui retourne une liste avec en premier terme la latitude et en second, la longitude, d'une adresse en entrée  
+    api_url = "https://api-adresse.data.gouv.fr/search/?q="
+    r = requests.get(api_url + urllib.parse.quote(adr))
+    comments = json.loads(r.text)
+    return [comments['features'][0]['geometry']['coordinates'][1],
+            comments['features'][0]['geometry']['coordinates'][0]]
+
+## Code de recuperation du fichier en local.
+
+doc = read_ods("Acteurices.ods") # Mettre le chemin d'acces au document
+
+## Code de changement d'adresse en coordonnee
+
+for i in range(len(doc)):
+    if ((doc['Latitude'][i] is None) or (doc['Longitude'][i] is None)) & (doc['Localisation'][i] is not None) :
+        doc['Latitude'][i] = loca(doc['Localisation'][i])[0]
+        doc['Longitude'][i] = loca(doc['Localisation'][i])[1]
+    else:
+        pass
+
+## Sélection des informations qui nous intéressent
+colonne = ['Nom acteurice','Latitude','Longitude','Description activité']
+doc = doc[colonne]
+
+## Tracé carte avec Nantes au centre
+map_osm = folium.Map(location=[47.218371,-1.553621], zoom_start=8.4, titles='Cyclow map')
+
+## Ajout des interlocuteurs si nous avons des coordonnées
+
+for i in range(len(doc)):
+    if (doc['Latitude'][i] is not None) & (doc['Longitude'][i] is not None) :
+        folium.Marker(
+            location= [doc['Latitude'][i],doc['Longitude'][i]],
+            tooltip=doc['Nom acteurice'][i],
+            popup=doc['Description activité'][i]
+        ).add_to(map_osm)
+
+## Ajout d'un indicateur visuel de la distance maximal que nous pouvons parcourir sur le laps de temps que nous avons
+radius = 60*1000 # distance maximal que l'on peut parcourir et pouvoir rentrer a raison de 40 km/jour sur 4 jours
+folium.Circle(
+    location=[47.218371,-1.553621],
+    radius=radius,
+    color="red",
+    weight=3,
+    fill_opacity=0.1,
+    opacity=1,
+    fill=False,
+    popup="{} meters".format(radius),
+).add_to(map_osm)
+
+## 
+# Donnees issues de "https://transport.data.gouv.fr/datasets/amenagements-cyclables-france-metropolitaine", c'est celles que nous allons utiliser.
+def limite_zone(VilleOuest,VilleEst,VilleSud,VilleNord):
+    # permet de récupérer un cadre à patir d'adresse
+
+gdf = gpd.read_file('https://www.data.gouv.fr/fr/datasets/r/f5ca8714-f61c-43bf-a1ca-62ed108b820e')
+
+min_x, max_x, min_y, max_y = limite_zone('La Baule-Escoublac','La Possonière','La Roche-sur-Yon','Dominelais')
+
+gdf_clipped = gdf.cx[min_x:max_x, min_y:max_y]
+    # VilleOuest est la ville la plus à l'Ouest du rectangle que nous formons avec les 4 villes
+    return loca(VilleOuest)[1],loca(VilleEst)[1],loca(VilleSud)[0],loca(VilleNord)[0]
+
+folium.GeoJson(gdf_clipped).add_to(map_osm)
+map_osm.save("Carte cyclo-tour.html") # pour avoir une carte plus légère
