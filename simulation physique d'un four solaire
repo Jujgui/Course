@@ -1,0 +1,180 @@
+import numpy as np
+import math 
+from matplotlib import pyplot
+
+# Caractéristiques physique du four
+D_int = 135e-3 # m : diamètre du tube extérieur
+D_ext = 160e-3 # m : diamètre du tube intérieur
+L = 61.4e-2 # m : épaisseur des cylindre de verre
+ep = 1.5e-3 # m : longueur du tube
+
+# les différents masses à calculer
+rho_verre= 2230 # kg/m3 : masse volumique du verre
+rho_air= 1.125 # kg/m3 : masse volumique de l'air
+m_verre_int= rho_verre*3.1416*L*ep*(D_int-ep) # kg : masse du cylindre intérieur 
+m_verre_ext= rho_verre*3.1416*L*ep*(D_ext-ep) # kg : masse du cylindre extérieur
+m_air= rho_air*3.1416*L*(D_ext**2-D_int**2)/4 # kg : masse d'air dans le cylindre intérieur
+
+# données thermiques
+h_conv_rc=0.12
+k_air=0.024 #conductivité thermique de l'air
+rho_air=1.125 #kg/m3 masse volumique de l'air
+mu_air=0.00001755 #Pa.s viscosité dynamique de l'air
+c_p_air=1004 #J/kg/K capacité thermique de l'air
+c_p_verre=720 #J/kg/K capacité thermique du verre
+Q_air=100
+
+S_ext=3.1416*(D_ext/2)**2
+Re= 5e4 #rho_air*Q_air*D_ext/(S_ext*mu_air) #Reynolds
+Pr=mu_air*c_p_air/k_air #Prandtl
+C = 0.664
+m = 1/2
+h_conv_ca=k_air*C*Re**m*Pr**0.37/D_ext # p.388 du livre sur la thermie pour 1e4 < Re < 5e4
+
+def epsilon_r(x):
+    if 0<x+273<293:
+        return 0.04
+    else:
+        return (0.022*x-2.37)*0.01
+    
+epsilon_c=0.9
+sigma=0.0000000567 #W/m2/K4 constante de Boltzmann
+
+# Autres données
+#Données météorologiques
+G_t=900
+
+#Autres données numériques
+tau=0.95
+alpha=0.95
+
+# premier tracé
+t = [i for i in range(60*60*24)]
+def G_T(t):
+    return 800*math.sin(math.pi*t/(60*60*24))+100
+
+pyplot.plot(t,[G_T(i) for i in t])
+pyplot.show()
+
+# les résistances
+Rconv_rc = 1/(h_conv_rc*3.1416*D_int*L)
+Rconv_ca = 1/(h_conv_ca*3.1416*D_ext*L)
+
+def Rray_rc(T_int,T_ext):
+    a = 1/epsilon_r(T_int)+((1-epsilon_c)/epsilon_c)*(D_int/D_ext)
+    b = sigma*3.1416*D_int*L*(T_int**2+T_ext**2)*(T_int+T_ext)
+    return a/b
+
+def Rray_ca(T_ext):
+    return 1/(epsilon_c*sigma*D_ext*L*(T_amb**2+T_ext**2)*(T_amb+T_ext))
+
+# Les fonctions
+def f(T_int,T_ext):
+    rray_rc = Rray_rc(T_int,T_ext)
+    rray_ca = Rray_ca(T_ext)
+    cst1 = 1.01*tau*alpha*G_t*D_int*L
+    cst2 = m_verre_int*c_p_verre + m_air*c_p_air
+    return cst2/cst1 - (((Rconv_rc+rray_rc)/(Rconv_rc*rray_rc)+(Rconv_ca+rray_ca)/(Rconv_ca*rray_ca))/cst1)*(T_int-T_amb)
+
+def g(T_int,T_ext):
+    rray_rc = Rray_rc(T_int,T_ext)
+    rray_ca = Rray_ca(T_ext)
+    cst1 = m_verre_ext*c_p_verre
+    return ((Rconv_rc+rray_rc)/(Rconv_rc*rray_rc))*(T_int-T_ext)/cst1 - ((Rconv_ca+rray_ca)/(Rconv_ca*rray_ca))*(T_ext-T_amb)/cst1 
+
+def Ft(T_int,T_ext,temps):
+    cst1 = 1.01*tau*alpha*G_T(temps)*D_int*L
+    cst2 = m_verre_int*c_p_verre + m_air*c_p_air
+    return cst2/cst1 - (3.1416*L*(h_conv_rc*D_int+h_conv_ca*D_ext) + epsilon_c*sigma*D_ext*L*(T_amb**2+T_ext**2)*(T_amb+T_ext) + sigma*3.1416*D_int*L*(T_int**2+T_ext**2)*(T_int+T_ext)/(1/epsilon_r(T_int)+((1-epsilon_c)/epsilon_c)*(D_int/D_ext)))*(T_int-T_amb)/cst1
+
+def F(T_int,T_ext):
+    cst1 = 1.01*tau*alpha*G_t*D_int*L
+    cst2 = m_verre_int*c_p_verre + m_air*c_p_air
+    return cst2/cst1 - (3.1416*L*(h_conv_rc*D_int+h_conv_ca*D_ext) + epsilon_c*sigma*D_ext*L*(T_amb**2+T_ext**2)*(T_amb+T_ext) + sigma*3.1416*D_int*L*(T_int**2+T_ext**2)*(T_int+T_ext)/(1/epsilon_r(T_int)+((1-epsilon_c)/epsilon_c)*(D_int/D_ext)))*(T_int-T_amb)/cst1
+
+def G(T_int,T_ext):
+    cst1 = m_verre_ext*c_p_verre
+    return ((h_conv_rc*3.1416*D_int*L+sigma*3.1416*D_int*L*(T_int**2+T_ext**2)*(T_int+T_ext)/(1/epsilon_r(T_int)+((1-epsilon_c)/epsilon_c)*(D_int/D_ext)))*(T_int-T_ext)-(epsilon_c*sigma*D_ext*L*(T_amb**2+T_ext**2)*(T_amb+T_ext)+h_conv_ca*3.1416*D_ext*L)*(T_ext-T_amb))/cst1
+
+## Résolution avec Euler explicite
+# Temps
+dt = 0.1
+T = [0]
+
+# Temperature
+T_amb = 20
+T_int_t = [T_amb]
+T_int = [T_amb]
+T_ext = [T_amb]
+
+# Ajout dans la liste
+seconde = 60*60*24
+for i in range(int(seconde/dt)):
+    T.append(i)
+    T_int_t.append(T_int[-1]+dt*Ft(T_int[-1],T_ext[-1],i))
+    T_int.append(T_int[-1]+dt*F(T_int[-1],T_ext[-1]))
+    T_ext.append(T_ext[-1]+dt*G(T_int[-1],T_ext[-1]))
+
+# Le graphique
+    
+pyplot.title('Methode euler explicite')
+
+pyplot.plot(T,T_int_t,label='Temperature interieure avec variation de irradiance',color='red')
+pyplot.plot(T,T_int,label='Temperature interieure',color='green')
+pyplot.plot(T,T_ext,label='Temperature exterieure',color='blue')
+
+axes = pyplot.gca()    
+pyplot.gca().get_xaxis()
+pyplot.gca().get_yaxis()
+axes.set_xlabel('temps en seconde')
+axes.set_ylabel('temperature en celsus')
+
+pyplot.legend()
+pyplot.show()
+
+## Résolution avec Runge Kutta
+# Temps
+h = 0.0001 # le pas
+t = [0]
+
+# Temperature
+T_amb = 20
+T_int = [T_amb]
+T_ext = [T_amb]
+
+# Ajout dans la liste
+seconde = 60*60*24
+for i in range(int(seconde/h)):
+    t.append(i)
+    # la méthode
+    k1_int = F(T_int[-1],T_ext[-1])
+    k1_ext = G(T_int[-1],T_ext[-1])
+    #
+    k2_int = F(T_int[-1] + h*k1_int/2,T_ext[-1] + h*k1_ext/2)
+    k2_ext = G(T_int[-1] + h*k1_int/2,T_ext[-1] + h*k1_ext/2)
+    #
+    k3_int = F(T_int[-1] + h*k2_int/2,T_ext[-1] + h*k2_ext/2)
+    k3_ext = G(T_int[-1] + h*k2_int/2,T_ext[-1] + h*k2_ext/2)
+    #
+    k4_int = F(T_int[-1] + h*k3_int,T_ext[-1] + h*k3_ext)
+    k4_ext = G(T_int[-1] + h*k3_int,T_ext[-1] + h*k3_ext)
+    #
+    #
+    T_int.append(T_int[-1]+(h/6)*(k1_ext + 2*k2_ext + 2*k3_ext + k4_ext))
+    T_ext.append(T_ext[-1]+(h/6)*(k1_int + 2*k2_int + 2*k3_int + k4_int))
+    
+# Le graphique
+    
+pyplot.title('Methode runge kutta')
+
+pyplot.plot(t,T_int,label="Temperature interieure")
+pyplot.plot(t,T_ext,label="Temperature exterieure")
+
+axes = pyplot.gca()    
+pyplot.gca().get_xaxis()
+pyplot.gca().get_yaxis()
+axes.set_xlabel('temps en seconde')
+axes.set_ylabel('temperature en celsus')
+
+
+pyplot.show
